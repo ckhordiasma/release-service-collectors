@@ -14,6 +14,7 @@ import os
 import tempfile
 import re
 import subprocess
+import json
 
 pattern = r'(CVE-\d+-\d+)'
 
@@ -27,9 +28,13 @@ def find_cve():
     parser.add_argument("--git", required=True, help="SSH clone string for a git repository")
     parser.add_argument("--branch", required=True, help="Branch name to be cloned, it can be a branch or a SHA.")
     parser.add_argument("--reference-branch", required=False, help="Branch name to be cloned, it can be a branch or a SHA.")
+    parser.add_argument("--output", required=False, help="output format (json)")
     args = vars(parser.parse_args())
-    return git_log_titles(args['git'], args['branch'], args['reference_branch'])
-
+    results =  git_log_titles(args['git'], args['branch'], args['reference_branch'])
+    if args['output'] == 'json':
+      return json.dumps(results)
+    else:
+      return results
 
 def git_log_titles(git_url, branch, reference_branch):
     tmpdir = tempfile.mkdtemp()

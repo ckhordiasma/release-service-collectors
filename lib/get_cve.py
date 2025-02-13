@@ -15,7 +15,7 @@ import tempfile
 import re
 import subprocess
 
-pattern = r'^fix\(CVE-'
+pattern = r'(CVE-\d+-\d+)'
 
 
 def find_cve():
@@ -41,8 +41,10 @@ def git_log_titles(git_url, branch, reference_branch):
         print(f"Stdout: '{result.stdout}'")
         print(f"Stderr: '{result.stderr}'")
         exit(result.returncode)
-
+    
     os.chdir(tmpdir)
+    SEPARATOR='---------------'
+    
     if reference_branch:
       git_cmd = ["git", "checkout", reference_branch]
       result = subprocess.run(git_cmd, check=True, capture_output=True, text=True)
@@ -52,9 +54,9 @@ def git_log_titles(git_url, branch, reference_branch):
           print(f"Stdout: '{result.stdout}'")
           print(f"Stderr: '{result.stderr}'")
           exit(result.returncode)
-      git_cmd = ["git", "log", f"{reference_branch}..{branch}", "--pretty=format:%s:"]
+      git_cmd = ["git", "log", f"{reference_branch}..{branch}",f"--pretty=format:%B{SEPARATOR}"]
     else:
-      git_cmd = ["git", "log", "--pretty=format:%s:"]
+      git_cmd = ["git", "log", f"{branch}",f"--pretty=format:%B{SEPARATOR}"]
 
     result = subprocess.run(git_cmd, check=True, capture_output=True, text=True)
     if result.returncode != 0:
@@ -63,17 +65,25 @@ def git_log_titles(git_url, branch, reference_branch):
         print(f"Stdout: '{result.stdout}'")
         print(f"Stderr: '{result.stderr}'")
         exit(result.returncode)
-    list_of_commit_titles = result.stdout.splitlines()
-    return find_log_titles(list_of_commit_titles)
+    list_of_commits = result.stdout.split(SEPARATOR)
+    commits_with_cves = find_logs(list_of_commits)
+    return get_cves(commits_with_cves)
 
 
-def find_log_titles(commit_titles):
-    matching_titles = []
-    for title in commit_titles:
-        if re.match(pattern, title):
-            matching_titles.append(title)
-    return matching_titles
+def find_logs(commits):
+    matching_commits = []
+    for message in commits:
+        if re.search(pattern, message):
+            matching_commits.append(message)
+    return matching_commits
 
+def get_cves(commits):
+  all_cves = []
+  for message in commits:
+    cves = re.findall(pattern, message)
+    for cve in cves:
+      all_cves.append(cve)
+  return all_cves 
 
 if __name__ == "__main__":
     print(find_cve())

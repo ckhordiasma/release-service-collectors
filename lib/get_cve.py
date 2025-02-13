@@ -26,27 +26,39 @@ def find_cve():
             help="Mode in which the script is called. It does not have any impact for this script.")
     parser.add_argument("--git", required=True, help="SSH clone string for a git repository")
     parser.add_argument("--branch", required=True, help="Branch name to be cloned, it can be a branch or a SHA.")
+    parser.add_argument("--reference-branch", required=False, help="Branch name to be cloned, it can be a branch or a SHA.")
     args = vars(parser.parse_args())
-    return git_log_titles(args['git'], args['branch'])
+    return git_log_titles(args['git'], args['branch'], args['reference_branch'])
 
 
-def git_log_titles(git_url, branch):
+def git_log_titles(git_url, branch, reference_branch):
     tmpdir = tempfile.mkdtemp()
     git_cmd = ["git", "clone", git_url, "--branch", branch, tmpdir]
     result = subprocess.run(git_cmd, check=True, capture_output=True, text=True)
     if result.returncode != 0:
-        print("Something went wrong clonning, details below:")
+        print("Something went wrong cloning, details below:")
         print(f"Command: '{' '.join(git_cmd)}'")
         print(f"Stdout: '{result.stdout}'")
         print(f"Stderr: '{result.stderr}'")
         exit(result.returncode)
 
     os.chdir(tmpdir)
+    if reference_branch:
+      git_cmd = ["git", "checkout", reference_branch]
+      result = subprocess.run(git_cmd, check=True, capture_output=True, text=True)
+      if result.returncode != 0:
+          print("Something went wrong getting reference branch, details below:")
+          print(f"Command: '{' '.join(git_cmd)}'")
+          print(f"Stdout: '{result.stdout}'")
+          print(f"Stderr: '{result.stderr}'")
+          exit(result.returncode)
+      git_cmd = ["git", "log", f"{reference_branch}..{branch}", "--pretty=format:%s:"]
+    else:
+      git_cmd = ["git", "log", "--pretty=format:%s:"]
 
-    git_cmd = ["git", "log", "--pretty=format:%s:"]
     result = subprocess.run(git_cmd, check=True, capture_output=True, text=True)
     if result.returncode != 0:
-        print("Something went wrong clonning, details below:")
+        print("Something went wrong cloning, details below:")
         print(f"Command: '{' '.join(git_cmd)}'")
         print(f"Stdout: '{result.stdout}'")
         print(f"Stderr: '{result.stderr}'")
